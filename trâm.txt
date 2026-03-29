@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Góc Kết Nối Lớp Chúng Mình</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #e8f5e9;
+            --accent-color: #2196F3;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f7f4;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        /* Form đăng bài */
+        .post-form {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        /* Danh sách bài đăng */
+        .post {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .author {
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .time {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .content {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        /* Tương tác */
+        .actions {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-like {
+            background: none;
+            color: #666;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-like.liked {
+            color: #e91e63;
+        }
+
+        .comment-section {
+            margin-top: 15px;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .comment {
+            font-size: 13px;
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #ddd;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🌿 Lớp Chúng Mình</h1>
+        <p>Nơi chia sẻ và kết nối yêu thương</p>
+    </header>
+
+    <div class="post-form">
+        <input type="text" id="userName" placeholder="Tên của em là gì?">
+        <textarea id="postContent" rows="3" placeholder="Em muốn chia sẻ điều gì với cả lớp..."></textarea>
+        <button onclick="addPost()">Đăng bài ngay</button>
+    </div>
+
+    <div id="feed">
+        </div>
+</div>
+
+<script>
+    let posts = JSON.parse(localStorage.getItem('classPosts')) || [];
+
+    function saveAndRender() {
+        localStorage.setItem('classPosts', JSON.stringify(posts));
+        renderPosts();
+    }
+
+    function addPost() {
+        const nameInput = document.getElementById('userName');
+        const contentInput = document.getElementById('postContent');
+
+        if (!nameInput.value || !contentInput.value) {
+            alert("Em vui lòng nhập đầy đủ tên và nội dung nhé!");
+            return;
+        }
+
+        const newPost = {
+            id: Date.now(),
+            author: nameInput.value,
+            content: contentInput.value,
+            time: new Date().toLocaleString('vi-VN'),
+            likes: 0,
+            comments: []
+        };
+
+        posts.unshift(newPost);
+        contentInput.value = '';
+        saveAndRender();
+    }
+
+    function likePost(id) {
+        const post = posts.find(p => p.id === id);
+        post.likes++;
+        saveAndRender();
+    }
+
+    function addComment(event, id) {
+        if (event.key === 'Enter' && event.target.value) {
+            const post = posts.find(p => p.id === id);
+            post.comments.push(event.target.value);
+            event.target.value = '';
+            saveAndRender();
+        }
+    }
+
+    function renderPosts() {
+        const feed = document.getElementById('feed');
+        feed.innerHTML = posts.map(post => `
+            <div class="post">
+                <div class="post-header">
+                    <span class="author">👤 ${post.author}</span>
+                    <span class="time">${post.time}</span>
+                </div>
+                <div class="content">${post.content}</div>
+                <div class="actions">
+                    <button class="btn-like" onclick="likePost(${post.id})">
+                        ❤️ ${post.likes} Yêu thích
+                    </button>
+                </div>
+                <div class="comment-section">
+                    <div id="comments-${post.id}">
+                        ${post.comments.map(c => <div class="comment">💬 ${c}</div>).join('')}
+                    </div>
+                    <input type="text" placeholder="Viết phản hồi... (nhấn Enter)" 
+                           onkeypress="addComment(event, ${post.id})" 
+                           style="margin-top:10px; font-size: 12px; padding: 8px;">
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Khởi tạo trang web
+    renderPosts();
+</script>
+
+</body>
+</html>
