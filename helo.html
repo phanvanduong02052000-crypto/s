@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Speaking Coach - Nâng Tầm Thuyết Trình</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0a0a0c;
+            --accent-purple: #6d28d9;
+            --neon-green: #22c55e;
+            --dark-surface: #16161e;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .neon-border {
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+
+        .glass-morphism {
+            background: rgba(22, 22, 30, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Hiệu ứng sóng âm khi đang nói */
+        .visualizer-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 60px;
+        }
+
+        .bar {
+            width: 4px;
+            height: 10px;
+            background: var(--neon-green);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        .bar.animating {
+            animation: bounce 0.8s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { height: 10px; }
+            50% { height: 50px; }
+        }
+
+        /* Nút bấm hiệu ứng */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-purple), #4c1d95);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(109, 40, 217, 0.4);
+        }
+
+        .btn-neon {
+            background: transparent;
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+        }
+
+        .btn-neon:hover {
+            background: var(--neon-green);
+            color: var(--bg-deep);
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- KHU VỰC ĐĂNG NHẬP -->
+    <div id="login-screen" class="w-full max-w-md p-8 rounded-3xl glass-morphism shadow-2xl">
+        <div class="text-center mb-10">
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-green-400">
+                AI COACH LOGIN
+            </h1>
+            <p class="text-gray-400 mt-2">Đăng nhập để bắt đầu luyện tập</p>
+        </div>
+        
+        <div class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium mb-2">Tên người dùng</label>
+                <input type="text" id="username" class="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 focus:border-purple-500 outline-none transition-all" placeholder="Nhập tên của bạn...">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Mật khẩu</label>
+                <input type="password" id="password" class="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 focus:border-purple-500 outline-none transition-all" placeholder="••••••••">
+            </div>
+            <button onclick="handleLogin()" class="w-full btn-primary py-4 rounded-xl font-bold text-lg">Vào Phòng Luyện Nói</button>
+            <p id="login-error" class="text-red-500 text-sm text-center hidden">Vui lòng điền đầy đủ thông tin!</p>
+        </div>
+    </div>
+
+    <!-- PHÒNG LUYỆN NÓI THÔNG MINH -->
+    <div id="practice-screen" class="w-full max-w-4xl hidden animate-in fade-in duration-700">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-2xl font-bold text-white">Xin chào, <span id="user-display" class="text-green-400">Học viên</span>!</h2>
+                <p class="text-gray-400">HLV AI đã sẵn sàng lắng nghe bạn.</p>
+            </div>
+            <button onclick="handleLogout()" class="text-gray-400 hover:text-white transition-colors">Đăng xuất</button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Khu vực chính: Ghi âm -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="p-8 rounded-3xl glass-morphism relative overflow-hidden min-h-[400px] flex flex-col">
+                    <div id="status-indicator" class="flex items-center gap-2 mb-6 text-sm">
+                        <span class="w-2 h-2 rounded-full bg-gray-500 animate-pulse"></span>
+                        <span id="status-text">Đang chờ bạn bắt đầu...</span>
+                    </div>
+
+                    <!-- Visualizer -->
+                    <div class="visualizer-container mb-8">
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    </div>
+
+                    <div id="transcript-area" class="flex-grow text-xl leading-relaxed text-gray-300 italic mb-8 overflow-y-auto max-h-48 scrollbar-hide">
+                        "Văn bản bài nói của bạn sẽ xuất hiện tại đây khi bạn bắt đầu..."
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button id="start-btn" onclick="startRecording()" class="flex-1 btn-neon py-4 rounded-2xl font-bold flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                            Bắt đầu ghi âm
+                        </button>
+                        <button id="stop-btn" onclick="stopRecording()" class="flex-1 bg-gray-800 text-white py-4 rounded-2xl font-bold hidden hover:bg-red-900 transition-colors">
+                            Kết thúc & Phân tích
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Khu vực kết quả: AI Phân tích -->
+            <div id="analysis-panel" class="lg:col-span-1 space-y-6 opacity-50 pointer-events-none transition-all duration-500">
+                <div class="p-6 rounded-3xl glass-morphism neon-border h-full">
+                    <h3 class="text-xl font-bold text-green-400 mb-6 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Phân tích từ HLV AI
+                    </h3>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Độ trôi chảy</p>
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl font-bold" id="filler-count">0</span>
+                                <span class="text-sm text-gray-400">từ đệm (à, ờ, thì...)</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase tracking-widest mb-2">Tốc độ & Cảm xúc</p>
+                            <p class="font-semibold text-lg" id="speed-eval">---</p>
+                        </div>
+
+                        <div class="pt-4 border-t border-gray-800">
+                            <p class="text-xs text-gray-400 uppercase tracking-widest mb-3">Lời khuyên chuyên gia</p>
+                            <p id="ai-advice" class="text-sm text-gray-300 italic leading-relaxed">
+                                Hãy bắt đầu nói để AI có thể đưa ra lời khuyên cho bạn.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- QUẢN LÝ DỮ LIỆU & ĐĂNG NHẬP ---
+        const loginScreen = document.getElementById('login-screen');
+        const practiceScreen = document.getElementById('practice-screen');
+        const userDisplay = document.getElementById('user-display');
+
+        function handleLogin() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            if (user && pass) {
+                // Lưu vào LocalStorage
+                localStorage.setItem('speak_ai_user', user);
+                showPractice(user);
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        }
+
+        function showPractice(user) {
+            loginScreen.classList.add('hidden');
+            practiceScreen.classList.remove('hidden');
+            userDisplay.textContent = user;
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('speak_ai_user');
+            location.reload();
+        }
+
+        // Kiểm tra phiên đăng nhập cũ
+        window.onload = () => {
+            const savedUser = localStorage.getItem('speak_ai_user');
+            if (savedUser) showPractice(savedUser);
+        };
+
+
+        // --- LOGIC XỬ LÝ GIỌNG NÓI (AI CORE) ---
+        let recognition;
+        let isRecording = false;
+        let fullTranscript = "";
+        let startTime;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'vi-VN';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onresult = (event) => {
+                let interimTranscript = "";
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        fullTranscript += event.results[i][0].transcript + " ";
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                document.getElementById('transcript-area').innerHTML = 
+                    `<span class="text-white">${fullTranscript}</span> <span class="text-gray-500">${interimTranscript}</span>`;
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech Recognition Error", event.error);
+                stopRecording();
+            };
+        } else {
+            alert("Trình duyệt của bạn không hỗ trợ Web Speech API. Hãy dùng Chrome hoặc Edge.");
+        }
+
+        function startRecording() {
+            isRecording = true;
+            fullTranscript = "";
+            startTime = Date.now();
+            document.getElementById('transcript-area').innerText = "";
+            document.getElementById('status-text').innerText = "Đang lắng nghe...";
+            document.getElementById('status-indicator').querySelector('span').classList.replace('bg-gray-500', 'bg-red-500');
+            
+            document.getElementById('start-btn').classList.add('hidden');
+            document.getElementById('stop-btn').classList.remove('hidden');
+            
+            // Kích hoạt animation sóng âm
+            document.querySelectorAll('.bar').forEach(bar => bar.classList.add('animating'));
+            
+            recognition.start();
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            recognition.stop();
+            
+            document.getElementById('status-text').innerText = "Đã dừng. Đang phân tích...";
+            document.querySelectorAll('.bar').forEach(bar => bar.classList.remove('animating'));
+            
+            document.getElementById('start-btn').classList.remove('hidden');
+            document.getElementById('stop-btn').classList.add('hidden');
+
+            // Chạy AI phân tích sau 1 giây giả lập xử lý
+            setTimeout(performAIAnalysis, 1000);
+        }
+
+        // --- HÀM AI PHÂN TÍCH PHONG THÁI ---
+        function performAIAnalysis() {
+            const analysisPanel = document.getElementById('analysis-panel');
+            analysisPanel.classList.remove('opacity-50', 'pointer-events-none');
+            
+            // 1. Phân tích độ trôi chảy (Đếm từ đệm)
+            const fillerWords = ["à", "ờ", "ừm", "thì", "là", "ừ", "basically", "like", "kiểu như", "đấy"];
+            let fillerCount = 0;
+            const words = fullTranscript.toLowerCase().split(/\s+/);
+            
+            words.forEach(word => {
+                if (fillerWords.includes(word)) fillerCount++;
+            });
+
+            document.getElementById('filler-count').innerText = fillerCount;
+
+            // 2. Phân tích Tốc độ (Words per Minute)
+            const endTime = Date.now();
+            const durationMinutes = (endTime - startTime) / 60000;
+            const wpm = Math.round(words.length / durationMinutes);
+            
+            let speedEval = "";
+            let advice = "";
+
+            if (wpm < 80) {
+                speedEval = "Hơi chậm & Ngập ngừng";
+                advice = "Bạn đang nói hơi chậm, hãy cố gắng kết nối các ý tưởng liền mạch hơn để tăng sức hút.";
+            } else if (wpm > 160) {
+                speedEval = "Quá nhanh & Căng thẳng";
+                advice = "Bạn đang nói rất nhanh. Hãy thử hít thở sâu và nhấn nhá vào các từ quan trọng (Keyword).";
+            } else {
+                speedEval = "Tốc độ Tuyệt vời!";
+                advice = "Nhịp điệu của bạn rất ổn định. Hãy duy trì năng lượng này và chú ý thêm biểu cảm gương mặt.";
+            }
+
+            // 3. Phân tích ngập ngừng (Dựa trên số từ đệm / tổng số từ)
+            const fillerRatio = fillerCount / words.length;
+            if (fillerRatio > 0.15) {
+                advice += " Chú ý: Bạn dùng quá nhiều từ đệm. Hãy tập thói quen 'im lặng 1 giây' thay vì nói 'ờ, à'.";
+            } else if (words.length > 5 && fillerCount === 0) {
+                advice += " Thật ấn tượng! Bài nói của bạn cực kỳ trôi chảy và chuyên nghiệp.";
+            }
+
+            document.getElementById('speed-eval').innerText = speedEval;
+            document.getElementById('ai-advice').innerText = advice;
+            document.getElementById('status-text').innerText = "Phân tích hoàn tất!";
+        }
+    </script>
+</body>
+</html>
